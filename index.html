@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>WOLFFY HW: Hurt - Johnny Cash</title>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Montserrat:wght@400;800;900&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            gold: '#d4af37', /* Vintage Gold */
+                            dark: '#050505',
+                            card: '#121212',
+                            hover: '#1f1f1f',
+                            light: '#a1a1aa'
+                        }
+                    },
+                    fontFamily: {
+                        montserrat: ['Montserrat', 'sans-serif'],
+                        outfit: ['Outfit', 'sans-serif'],
+                        fira: ['"Fira Code"', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #050505;
+            color: #FFFFFF;
+            font-family: 'Outfit', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            overflow-x: hidden;
+            overscroll-behavior-y: contain; 
+        }
+        h1, h2, h3, .title-font { font-family: 'Montserrat', sans-serif; }
+        .code-font { font-family: '"Fira Code"', monospace; }
+
+        /* Custom UI Elements */
+        .glass-header {
+            background: rgba(5, 5, 5, 0.95);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(212, 175, 55, 0.1);
+        }
+
+        /* Step Card Animation System */
+        .step-card {
+            display: none;
+            opacity: 0;
+            transform: translateX(50px);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            width: 100%;
+        }
+        .step-card.active {
+            display: block;
+            opacity: 1;
+            transform: translateX(0);
+            animation: slideIn 0.4s forwards;
+        }
+        .step-card.slide-out {
+            display: block;
+            position: absolute;
+            transform: translateX(-50px);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(30px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .hw-card {
+            background: #121212;
+            border: 1px solid rgba(212, 175, 55, 0.1);
+            border-radius: 24px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            transition: transform 0.2s, border-color 0.3s;
+        }
+
+        /* Form Elements */
+        .custom-select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23d4af37' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 1rem center;
+            background-size: 1em;
+        }
+
+        /* Interactive Buttons */
+        .mcq-btn {
+            transition: all 0.2s ease;
+            border: 2px solid transparent;
+        }
+        .mcq-btn.selected {
+            border-color: #d4af37;
+            background-color: rgba(212, 175, 55, 0.1);
+            color: white;
+            transform: scale(1.02);
+        }
+        .mcq-btn.correct {
+            border-color: #d4af37;
+            background-color: #d4af37;
+            color: black;
+            font-weight: bold;
+        }
+        .mcq-btn.wrong {
+            border-color: #ef4444;
+            background-color: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+        }
+
+        /* Shake Animation for Errors */
+        .shake { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-2px, 0, 0); }
+            20%, 80% { transform: translate3d(3px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-5px, 0, 0); }
+            40%, 60% { transform: translate3d(5px, 0, 0); }
+        }
+
+        /* Success Overlay */
+        #success-overlay {
+            opacity: 0; pointer-events: none; transition: opacity 0.5s ease;
+        }
+        #success-overlay.active { opacity: 1; pointer-events: auto; }
+
+        /* Confetti */
+        .confetti { position: absolute; width: 10px; height: 10px; background-color: #d4af37; z-index: 1000; }
+        @keyframes fall {
+            0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+        }
+        
+        .mobile-gradient { background: linear-gradient(180deg, rgba(212, 175, 55, 0.1) 0%, rgba(5, 5, 5, 1) 30%); }
+
+        .print-card-enter { animation: slideUpFade 0.5s ease-out forwards; }
+        @keyframes slideUpFade {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Textarea Notepad styling */
+        .notepad-textarea {
+            background-color: transparent;
+            background-image: repeating-linear-gradient(transparent, transparent 31px, rgba(255,255,255,0.05) 31px, rgba(255,255,255,0.05) 32px);
+            line-height: 32px;
+            background-attachment: local;
+        }
+        .notepad-textarea:focus { outline: none; }
+    </style>
+</head>
+<body class="mobile-gradient min-h-screen pb-32 relative flex flex-col">
+
+    <!-- STICKY HEADER & PROGRESS BAR -->
+    <header class="glass-header fixed top-0 w-full z-50">
+        <div class="px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-brand-gold flex items-center justify-center text-black shadow-[0_0_15px_rgba(212,175,55,0.4)]">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 18h3l2-2h12l2 2h3"/><path d="M4 18v3h16v-3"/><path d="M9 13v-3"/><path d="M15 13v-3"/><path d="M12 9V5"/><path d="M10 5h4"/></svg>
+                </div>
+                <div>
+                    <h1 class="font-black title-font text-lg leading-tight">WOLFFY HW</h1>
+                    <p class="text-[10px] text-brand-light tracking-widest uppercase code-font">Hurt • B2</p>
+                </div>
+            </div>
+            <div class="text-right">
+                <p id="progress-text" class="text-xs text-brand-gold font-bold code-font">Intro</p>
+            </div>
+        </div>
+        <!-- Progress Line -->
+        <div class="w-full h-1 bg-[#1a1a1a]">
+            <div id="progress-bar" class="h-full bg-brand-gold transition-all duration-500 w-0"></div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT (CARDS CONTAINER) -->
+    <main class="flex-1 w-full max-w-md mx-auto px-4 mt-28 mb-6 relative flex items-center justify-center">
+        
+        <!-- STEP 0: INTRO AREA -->
+        <section class="step-card active" id="step-0">
+            <div class="text-center mt-6">
+                <div class="w-32 h-32 mx-auto rounded-xl overflow-hidden shadow-[0_0_40px_rgba(212,175,55,0.15)] mb-6 border-2 border-brand-gold bg-gradient-to-br from-[#1a1a1a] to-[#050505] flex items-center justify-center relative group">
+                    <!-- Musical Note Icon replacing broken image -->
+                    <svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#d4af37" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="group-hover:scale-110 transition-transform duration-700 drop-shadow-[0_0_15px_rgba(212,175,55,0.6)]">
+                        <path d="M9 18V5l12-2v13"></path>
+                        <circle cx="6" cy="18" r="3"></circle>
+                        <circle cx="18" cy="16" r="3"></circle>
+                    </svg>
+                </div>
+                <h2 class="text-4xl font-black title-font mb-2">After Show</h2>
+                <p class="text-brand-light text-base mt-2 px-4">Complete all 12 tasks to secure your Platinum Record for B2.</p>
+            </div>
+        </section>
+
+        <!-- STEP 1: TASK 01 -->
+        <section class="step-card" id="step-1">
+            <div class="hw-card p-6 md:p-8">
+                <div class="flex items-center gap-2 mb-4">
+                    <span class="bg-white text-black text-[10px] font-bold px-2 py-1 rounded code-font uppercase">Task 01</span>
+                    <h3 class="font-bold text-lg text-white">Vocab Check</h3>
+                </div>
+                <p class="text-base text-gray-300 mb-8">What does the metaphor <span class="text-brand-gold font-bold">"Empire of dirt"</span> mean in the song?</p>
+                <div class="space-y-4 options-group" data-correct="3">
+                    <button class="mcq-btn w-full text-left bg-[#1f1f1f] p-4 rounded-xl text-sm font-medium" onclick="selectMCQ(this, 1)">A) A literal kingdom made of mud and sand.</button>
+                    <button class="mcq-btn w-full text-left bg-[#1f1f1f] p-4 rounded-xl text-sm font-medium" onclick="selectMCQ(this, 2)">B) A successful business in the farming industry.</button>
+                    <button class="mcq-btn w-full text-left bg-[#1f1f1f] p-4 rounded-xl text-sm font-medium" onclick="selectMCQ(this, 3)">C) A lifetime of wealth and fame that is ultimately meaningless.</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- STEP 2: TASK 02 -->
+        <section class="step-card" id="step-2">
+            <div class="hw-card p-6 md:p-8">
+                <div class="flex items-center gap-2 mb-4">
+                    <span class="bg-white text-black text-[10px] font-bold px-2 py-1 rounded code-font uppercase">Task 02</span>
+                    <h3 class="font-bold text-lg text-white">Metaphors</h3>
+                </div>
+                <p class="text-base text-gray-300 mb-8">"I wear this <span class="text-brand-gold font-bold">crown of thorns</span>." This is a biblical reference used to represent...</p>
+                <div class="space-y-4 options-group" data-correct="1">
+                    <button class="mcq-btn w-full text-left bg-[#1f1f1f] p-4 rounded-xl text-sm font-medium" onclick="selectMCQ(this, 1)">A) A heavy burden of guilt, pain, and suffering.</button>
+                    <button class="mcq-btn w-full text-left bg-[#1f1f1f] p-4 rounded-xl text-sm font-medium" onclick="selectMCQ(this, 2)">B) Being the king of country music.</button>
+                    <button class="mcq-btn w-full text-left bg-[#1f1f1f] p-4 rounded-xl text-sm font-medium" onclick="selectMCQ(this, 3)">C) A fashion statement from his youth.</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- STEP 3: TASK 03 -->
+        <section class="step-card" id="step-3">
+            <div class="hw-card p-6 md:p-8 border-t-4 border-brand-gold">
+                <div class="flex items-center gap-2 mb-4">
+                    <span class="bg-brand-gold text-black text-[10px] font-bold px-2 py-1 rounded code-font uppercase">Task 03</span>
+                    <h3 class="font-bold text-lg text-white">Grammar Concept</h3>
+                </div>
+                <p class="text-base text-gray-300 mb-8">When do we use the <span class="text-brand-gold font-bold">Second Conditional</span> ("If I could... I would")?</p>
+                <div class="space-y-4 options-group" data-correct="2">
+                    <button class="mcq-btn w-full text-left bg-[#1f1f1f] p-4 rounded-xl text-sm font-medium" onclick="selectMCQ(this, 1)">A) To talk about things that happened yesterday.</button>
+                    <button class="mcq-btn w-full text-left bg-[#1f1f1f] p-4 rounded-xl text-sm font-medium" onclick="selectMCQ(this, 2)">B) To talk about imaginary, hypothetical, or impossible situations in the present/future.</button>
+                    <button class="mcq-btn w-full text-left bg-[#1f1f1f] p-4 rounded-xl text-sm font-medium" onclick="selectMCQ(this, 3)">C) To talk about daily routines.</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- STEP 4: TASK 04 -->
+        <section class="step-card" id="step-4">
+            <div class="hw-card p-6 md:p-8 border-t-4 border-brand-gold">
+                <div class="flex items-center gap-2 mb-4">
+                    <span class="bg-brand-gold text-black text-[10px] font-bold px-2 py-1 rounded code-font uppercase">Task 04</span>
+                    <h3 class="font-bold text-lg text-white">Grammar Drill</h3>
+                </div>
+                <p class="text-base text-gray-300 mb-6">Select the correct words to complete the hypothetical situation.</p>
+                <div class="bg-[#0a0a0a] p-6 rounded-2xl border border-gray-800 shadow-inner">
+                    <p class="text-xl leading-[2.5] font-medium text-center">
+                        "If I 
+                        <select data-answer="could" class="custom-select bg-[#1f1f1f] border-b-2 border-gray-600 text-brand-gold font-bold rounded px-3 py-1 mx-1 focus:border-brand-gold text-lg">
+                            <option value="">...</option><option value="can">can</option><option value="could">could</option><option value="will">will</option>
+                        </select> 
+                        <br>start again, I 
+                        <select data-answer="would keep" class="custom-select bg-[#1f1f1f] border-b-2 border-gray-600 text-brand-gold font-bold rounded px-3 py-1 mx-1 mt-2 focus:border-brand-gold text-lg">
+                            <option value="">...</option><option value="will keep">will keep</option><option value="would keep">would keep</option><option value="kept">kept</option>
+                        </select>
+                        <br>myself."
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- STEP 5: TASK 05 -->
+        <section class="step-card" id="step-5">
+            <div class="hw-card p-6 md:p-8">
+                <div class="flex items-center gap-2 mb-4">
+                    <span class="bg-[#3b82f6] text-white text-[10px] font-bold px-2 py-1 rounded code-font uppercase">Task 05</span>
+                    <h3 class="font-bold text-lg text-white">Listening Check</h3>
+                </div>
+                <p class="text-base text-gray-300 mb-8">In the very first line of the song, what does he do to see if he still feels?</p>
+                <div class="space-y-4 options-group" data-correct="1">
+                    <button class="mcq-btn w-full text-left bg-[#1f1f1f] p-4 rounded-xl text-sm font-medium" onclick="selectMCQ(this, 1)">A) He hurts himself.</button>
+                    <button class="mcq-btn w-full text-left bg-[#1f1f1f] p-4 rounded-xl text-sm font-medium" onclick="selectMCQ(this, 2)">B) He plays his guitar loudly.</button>
+                    <button class="mcq-btn w-full text-left bg-[#1f1f1f] p-4 rounded-xl text-sm font-medium" onclick="selectMCQ(this, 3)">C) He looks at an old photograph.</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- STEP 6: TASK 06 -->
+        <section class="step-card" id="step-6">
+            <div class="hw-card p-6 md:p-8">
+                <div class="flex items-center gap-2 mb-4">
+                    <span class="bg-white text-black text-[10px] font-bold px-2 py-1 rounded code-font uppercase">Task 06</span>
+                    <h3 class="font-bold text-lg text-white">Meaning Context</h3>
+                </div>
+                <p class="text-base text-gray-300 mb-8">"The needle tears a hole, the old familiar <span class="text-brand-gold font-bold">sting</span>." What does 'sting' refer to?</p>
+                <div class="space-y-4 options-group" data-correct="2">
+                    <button class="mcq-btn w-full text-left bg-[#1f1f1f] p-4 rounded-xl text-sm font-medium" onclick="selectMCQ(this, 1)">A) A bee that entered his room.</button>
+                    <button class="mcq-btn w-full text-left bg-[#1f1f1f] p-4 rounded-xl text-sm font-medium" onclick="selectMCQ(this, 2)">B) A sharp, sudden physical or emotional pain.</button>
+                    <button class="mcq-btn w-full text-left bg-[#1f1f1f] p-4 rounded-xl text-sm font-medium" onclick="selectMCQ(this, 3)">C) A mistake in his guitar solo.</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- STEP 7: TASK 07 -->
+        <section class="step-card" id="step-7">
+            <div class="hw-card p-6 md:p-8">
+                <div class="flex items-center gap-2 mb-4">
+                    <span class="bg-brand-gold text-black text-[10px] font-bold px-2 py-1 rounded code-font uppercase">Task 07</span>
+                    <h3 class="font-bold text-lg text-white">Structure Check</h3>
+                </div>
+                <p class="text-base text-gray-300 mb-8">"If I <strong class="text-brand-gold">could find</strong> a way, I <strong class="text-brand-gold">would keep</strong> you." What does this mean in reality?</p>
+                <div class="space-y-4 options-group" data-correct="2">
+                    <button class="mcq-btn w-full text-left bg-[#1f1f1f] p-4 rounded-xl text-sm font-medium" onclick="selectMCQ(this, 1)">A) He will find a way to keep the person tomorrow.</button>
+                    <button class="mcq-btn w-full text-left bg-[#1f1f1f] p-4 rounded-xl text-sm font-medium" onclick="selectMCQ(this, 2)">B) He cannot find a way right now, so he cannot keep the person.</button>
+                    <button class="mcq-btn w-full text-left bg-[#1f1f1f] p-4 rounded-xl text-sm font-medium" onclick="selectMCQ(this, 3)">C) He found a way yesterday and kept the person.</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- STEP 8: TASK 08 -->
+        <section class="step-card" id="step-8">
+            <div class="hw-card p-6 md:p-8">
+                <div class="flex items-center gap-2 mb-4">
+                    <span class="bg-brand-gold text-black text-[10px] font-bold px-2 py-1 rounded code-font uppercase">Task 08</span>
+                    <h3 class="font-bold text-lg text-white">The Anthem</h3>
+                </div>
+                <p class="text-base text-gray-300 mb-6">Complete the emotional verses:</p>
+                <div class="bg-[#0a0a0a] p-6 rounded-2xl border border-gray-800 shadow-inner">
+                    <p class="text-xl leading-[2.5] font-medium text-center">
+                        "What have I 
+                        <select data-answer="become" class="custom-select bg-[#1f1f1f] border-b-2 border-gray-600 text-brand-gold font-bold rounded px-3 py-1 mx-1 focus:border-brand-gold text-lg">
+                            <option value="">...</option><option value="done">done</option><option value="become">become</option><option value="seen">seen</option>
+                        </select> 
+                        <br>My sweetest friend?
+                        <br>Everyone I know goes 
+                        <select data-answer="away" class="custom-select bg-[#1f1f1f] border-b-2 border-gray-600 text-brand-gold font-bold rounded px-3 py-1 mx-1 focus:border-brand-gold text-lg">
+                            <option value="">...</option><option value="away">away</option><option value="down">down</option><option value="out">out</option>
+                        </select>
+                        <br>In the end."
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- STEP 9: TASK 09 -->
+        <section class="step-card" id="step-9">
+            <div class="hw-card p-6 md:p-8">
+                <div class="flex items-center gap-2 mb-4">
+                    <span class="bg-[#eab308] text-black text-[10px] font-bold px-2 py-1 rounded code-font uppercase">Task 09</span>
+                    <h3 class="font-bold text-lg text-white">Pronunciation</h3>
+                </div>
+                <p class="text-base text-gray-300 mb-8">In connected speech, how does a native speaker usually pronounce <strong class="text-white">"If I could"</strong>?</p>
+                <div class="space-y-4 options-group" data-correct="1">
+                    <button class="mcq-btn w-full text-left bg-[#1f1f1f] p-4 rounded-xl text-sm font-medium" onclick="selectMCQ(this, 1)">A) "I-fa-could" (linking the words together smoothly).</button>
+                    <button class="mcq-btn w-full text-left bg-[#1f1f1f] p-4 rounded-xl text-sm font-medium" onclick="selectMCQ(this, 2)">B) "If... I... could" (with hard pauses between every word).</button>
+                    <button class="mcq-btn w-full text-left bg-[#1f1f1f] p-4 rounded-xl text-sm font-medium" onclick="selectMCQ(this, 3)">C) "Ifa-coud-da"</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- STEP 10: TASK 10 -->
+        <section class="step-card" id="step-10">
+            <div class="hw-card p-6 md:p-8 border-t-4 border-brand-gold">
+                <div class="flex items-center gap-2 mb-4">
+                    <span class="bg-brand-gold text-black text-[10px] font-bold px-2 py-1 rounded code-font uppercase">Task 10</span>
+                    <h3 class="font-bold text-lg text-white">Form Check</h3>
+                </div>
+                <p class="text-base text-gray-300 mb-8">How do you form the Second Conditional?</p>
+                <div class="space-y-4 options-group" data-correct="1">
+                    <button class="mcq-btn w-full text-left bg-[#1f1f1f] p-4 rounded-xl text-sm font-medium" onclick="selectMCQ(this, 1)">A) If + Past Simple, Subject + Would + Base Verb.</button>
+                    <button class="mcq-btn w-full text-left bg-[#1f1f1f] p-4 rounded-xl text-sm font-medium" onclick="selectMCQ(this, 2)">B) If + Present Simple, Subject + Will + Base Verb.</button>
+                    <button class="mcq-btn w-full text-left bg-[#1f1f1f] p-4 rounded-xl text-sm font-medium" onclick="selectMCQ(this, 3)">C) If + Past Perfect, Subject + Would Have + Past Participle.</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- STEP 11: TASK 11 -->
+        <section class="step-card" id="step-11">
+            <div class="hw-card p-6 md:p-8">
+                <div class="flex items-center gap-2 mb-4">
+                    <span class="bg-purple-500 text-white text-[10px] font-bold px-2 py-1 rounded code-font uppercase">Task 11</span>
+                    <h3 class="font-bold text-lg text-white">Deep Dive</h3>
+                </div>
+                <p class="text-base text-gray-300 mb-8">Why is Johnny Cash's version of "Hurt" considered by many to be better than the original?</p>
+                <div class="space-y-4 options-group" data-correct="3">
+                    <button class="mcq-btn w-full text-left bg-[#1f1f1f] p-4 rounded-xl text-sm font-medium" onclick="selectMCQ(this, 1)">A) Because he changed all the lyrics to make them happier.</button>
+                    <button class="mcq-btn w-full text-left bg-[#1f1f1f] p-4 rounded-xl text-sm font-medium" onclick="selectMCQ(this, 2)">B) Because he used electric guitars and played it faster.</button>
+                    <button class="mcq-btn w-full text-left bg-[#1f1f1f] p-4 rounded-xl text-sm font-medium" onclick="selectMCQ(this, 3)">C) It changes the meaning from youthful angst to an old man's reflection on life and regret.</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- STEP 12: TASK 12 (WRITING) -->
+        <section class="step-card" id="step-12">
+            <div class="hw-card p-6 md:p-8 border-t-4 border-t-[#3b82f6]">
+                <div class="flex items-center gap-2 mb-4">
+                    <span class="bg-[#3b82f6] text-white text-[10px] font-bold px-2 py-1 rounded code-font uppercase">Task 12</span>
+                    <h3 class="font-bold text-lg text-white">The Mic Drop (Writing)</h3>
+                </div>
+                <p class="text-sm text-gray-400 mb-6">Use a <strong class="text-brand-gold">Second Conditional</strong> ("If I could... I would...") to write your answer.</p>
+                
+                <div class="mb-4">
+                    <label class="block text-brand-gold font-bold mb-4 text-base leading-relaxed">If you could go back in time and give yourself one piece of advice, what would you say?</label>
+                    <textarea id="writing-task" rows="6" placeholder="If I could go back in time, I would tell myself..." class="notepad-textarea w-full bg-[#0a0a0a] border-2 border-gray-800 rounded-xl p-4 text-white focus:outline-none focus:border-[#3b82f6] transition-colors resize-none text-lg shadow-inner"></textarea>
+                </div>
+                
+                <p class="text-xs text-gray-500 code-font text-right" id="char-count">0 chars</p>
+
+                <!-- Print Card that appears after saving -->
+                <div id="print-card" class="hidden mt-6 bg-gradient-to-br from-brand-gold to-yellow-800 p-1 rounded-2xl print-card-enter shadow-2xl">
+                    <div class="bg-[#121212] p-6 rounded-xl text-center">
+                        <div class="w-16 h-16 bg-brand-gold rounded-full flex items-center justify-center mx-auto mb-4 shadow-[0_0_15px_rgba(212,175,55,0.5)]">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        </div>
+                        <h4 class="text-2xl font-black title-font text-white mb-2">Awesome!</h4>
+                        <p class="text-base text-gray-300 leading-relaxed">
+                            Take a <strong class="text-brand-gold">screenshot</strong> of this screen to send to your teacher, proving you completed the final Task! 📸
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- FIXED BOTTOM DYNAMIC BAR -->
+    <div class="fixed bottom-0 left-0 w-full bg-[#050505] border-t border-[#1a1a1a] p-4 pb-8 z-40">
+        <button onclick="handleMainAction()" id="main-btn" class="w-full max-w-md mx-auto block bg-white text-black font-black title-font py-4 rounded-full text-xl active:scale-95 transition-all shadow-lg">
+            START MISSIONS
+        </button>
+    </div>
+
+    <!-- SUCCESS OVERLAY (FULL SCREEN) -->
+    <div id="success-overlay" class="fixed inset-0 bg-[#050505] z-[100] flex flex-col items-center justify-center p-6 text-center">
+        <div class="w-48 h-48 rounded-full bg-gradient-to-tr from-yellow-600 via-yellow-200 to-yellow-500 shadow-[0_0_80px_rgba(212,175,55,0.3)] mb-8 flex items-center justify-center relative border-8 border-[#1a1a1a] animate-[spin_5s_linear_infinite]">
+            <div class="w-16 h-16 rounded-full bg-black border-2 border-brand-gold flex items-center justify-center z-20"></div>
+            <div class="absolute w-40 h-40 rounded-full border border-black/10"></div>
+            <div class="absolute w-32 h-32 rounded-full border border-black/10"></div>
+        </div>
+        
+        <h1 class="text-6xl font-black title-font text-white mb-2 tracking-tight">100%</h1>
+        <h2 class="text-2xl text-brand-gold font-bold mb-6 tracking-widest uppercase title-font">Platinum Grade</h2>
+        <p class="text-gray-400 mb-10 text-lg max-w-sm">All tasks completed successfully. Don't forget to send the screenshot of Task 12 to your teacher!</p>
+        
+        <button onclick="closeApp()" class="border-2 border-white text-black font-bold py-4 px-12 rounded-full hover:bg-brand-gold hover:border-brand-gold transition-colors w-full max-w-xs text-lg">
+            CLOSE APP
+        </button>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // State
+        let currentStep = 0;
+        const totalSteps = 12; // Tasks 1 to 12
+        let writingLocked = false;
+
+        // MCQ Selection Logic (visual only)
+        function selectMCQ(btn, answerIndex) {
+            const group = btn.closest('.options-group');
+            const buttons = group.querySelectorAll('.mcq-btn');
+            buttons.forEach(b => {
+                b.classList.remove('selected');
+                b.removeAttribute('data-selected');
+            });
+            btn.classList.add('selected');
+            btn.setAttribute('data-selected', answerIndex);
+        }
+
+        // Writing Task Character Count
+        const textarea = document.getElementById('writing-task');
+        const charCount = document.getElementById('char-count');
+        textarea.addEventListener('input', function() {
+            charCount.textContent = `${this.value.length} chars`;
+        });
+
+        // Main Action Button Router
+        function handleMainAction() {
+            if (currentStep === 0) {
+                goToNextStep();
+            } else if (currentStep >= 1 && currentStep <= 11) {
+                validateCurrentStep();
+            } else if (currentStep === 12) {
+                if (!writingLocked) {
+                    validateWritingTask();
+                } else {
+                    submitFinal();
+                }
+            }
+        }
+
+        // Validation Logic for Tasks 1-11
+        function validateCurrentStep() {
+            const currentCard = document.getElementById(`step-${currentStep}`);
+            const btn = document.getElementById('main-btn');
+            let isCorrect = true;
+
+            // Check MCQ if exists
+            const mcqGroup = currentCard.querySelector('.options-group');
+            if (mcqGroup) {
+                const correct = mcqGroup.getAttribute('data-correct');
+                const selectedBtn = mcqGroup.querySelector('.mcq-btn.selected');
+                
+                if (selectedBtn && selectedBtn.getAttribute('data-selected') === correct) {
+                    selectedBtn.classList.add('correct');
+                } else {
+                    isCorrect = false;
+                    if(selectedBtn) selectedBtn.classList.add('wrong');
+                }
+            }
+
+            // Check Selects if exists
+            const selects = currentCard.querySelectorAll('.custom-select');
+            if (selects.length > 0) {
+                selects.forEach(sel => {
+                    if (sel.value !== sel.getAttribute('data-answer')) {
+                        isCorrect = false;
+                        sel.classList.add('border-red-500', 'text-red-500');
+                    } else {
+                        sel.classList.remove('border-red-500', 'text-red-500');
+                        sel.classList.add('border-brand-gold');
+                    }
+                });
+            }
+
+            // Feedback & Transition
+            if (isCorrect) {
+                btn.classList.replace('bg-white', 'bg-brand-gold');
+                btn.classList.replace('text-black', 'text-black');
+                btn.innerText = "CORRECT!";
+                
+                setTimeout(() => {
+                    btn.classList.replace('bg-brand-gold', 'bg-white');
+                    goToNextStep();
+                }, 700);
+            } else {
+                // Shake and show error
+                currentCard.querySelector('.hw-card').classList.add('shake', 'border-red-500');
+                btn.classList.replace('bg-white', 'bg-red-500');
+                btn.classList.replace('text-black', 'text-white');
+                btn.innerText = "TRY AGAIN";
+                
+                setTimeout(() => {
+                    currentCard.querySelector('.hw-card').classList.remove('shake', 'border-red-500');
+                    btn.classList.replace('bg-red-500', 'bg-white');
+                    btn.classList.replace('text-white', 'text-black');
+                    btn.innerText = "CHECK & NEXT";
+                }, 1000);
+            }
+        }
+
+        // Validation for Writing Task (12)
+        function validateWritingTask() {
+            const btn = document.getElementById('main-btn');
+            
+            if (textarea.value.trim().length < 20) { 
+                textarea.classList.add('border-red-500', 'shake');
+                btn.classList.replace('bg-brand-gold', 'bg-red-500');
+                btn.classList.replace('text-black', 'text-white');
+                btn.innerText = "WRITE A LITTLE MORE!";
+                
+                setTimeout(() => {
+                    textarea.classList.remove('border-red-500', 'shake');
+                    btn.classList.replace('bg-red-500', 'bg-brand-gold');
+                    btn.classList.replace('text-white', 'text-black');
+                    btn.innerText = "FINISH WRITING";
+                }, 1500);
+                return;
+            }
+
+            // Success - Lock it and show print card
+            writingLocked = true;
+            textarea.disabled = true;
+            textarea.classList.add('opacity-70', 'bg-[#0a0a0a]');
+            textarea.classList.remove('border-[#3b82f6]');
+            textarea.classList.add('border-brand-gold');
+            
+            document.getElementById('print-card').classList.remove('hidden');
+            
+            // Scroll to bottom so user sees the print card
+            setTimeout(() => window.scrollTo(0, document.body.scrollHeight), 100);
+
+            // Change main button to Submit
+            btn.classList.replace('bg-brand-gold', 'bg-white');
+            btn.classList.replace('text-black', 'text-black');
+            btn.innerText = "SUBMIT ALL TASKS";
+        }
+
+        // Final Submit
+        function submitFinal() {
+            const btn = document.getElementById('main-btn');
+            btn.innerText = "VERIFYING...";
+            btn.classList.add('opacity-80');
+            
+            setTimeout(() => {
+                window.scrollTo(0, 0);
+                document.getElementById('success-overlay').classList.add('active');
+                shootConfettiMobile();
+            }, 800);
+        }
+
+        // Slide Transition Logic
+        function goToNextStep() {
+            const currentEl = document.getElementById(`step-${currentStep}`);
+            
+            // Slide out current
+            currentEl.classList.remove('active');
+            currentEl.classList.add('slide-out');
+            
+            setTimeout(() => {
+                currentEl.classList.remove('slide-out'); // hide completely
+                
+                currentStep++;
+                const nextEl = document.getElementById(`step-${currentStep}`);
+                nextEl.classList.add('active');
+
+                updateUI();
+                window.scrollTo(0, 0);
+            }, 300); // Wait for slide out animation
+        }
+
+        // Update Progress Bar and Button Text
+        function updateUI() {
+            const btn = document.getElementById('main-btn');
+            const progressText = document.getElementById('progress-text');
+            const progressBar = document.getElementById('progress-bar');
+
+            if (currentStep >= 1 && currentStep <= 12) {
+                progressText.innerText = `Task ${currentStep} of 12`;
+                progressBar.style.width = `${(currentStep / totalSteps) * 100}%`;
+            }
+
+            if (currentStep >= 1 && currentStep <= 11) {
+                btn.innerText = "CHECK & NEXT";
+                btn.classList.replace('bg-white', 'bg-brand-gold'); 
+                btn.classList.replace('text-white', 'text-black');
+            } else if (currentStep === 12) {
+                btn.innerText = "FINISH WRITING";
+                btn.classList.replace('bg-white', 'bg-brand-gold');
+                btn.classList.replace('text-white', 'text-black');
+            }
+        }
+
+        // Confetti Effect
+        function shootConfettiMobile() {
+            const cols = ['#d4af37', '#FFFFFF', '#fce788', '#997a15'];
+            for(let i=0; i<80; i++) {
+                let c = document.createElement('div');
+                c.className = 'confetti rounded-sm'; 
+                c.style.left = Math.random() * 100 + 'vw';
+                c.style.backgroundColor = cols[Math.floor(Math.random() * cols.length)];
+                c.style.animation = `fall ${Math.random() * 3 + 2}s linear forwards`;
+                c.style.animationDelay = Math.random() * 1 + 's';
+                document.getElementById('success-overlay').appendChild(c);
+                setTimeout(()=>c.remove(), 5000);
+            }
+        }
+
+        // Close App Mock
+        function closeApp() {
+            document.getElementById('success-overlay').innerHTML = '<div class="w-full h-full flex items-center justify-center"><h1 class="text-3xl font-bold title-font text-brand-light px-6 leading-relaxed">Homework successfully submitted. You can close this tab now.</h1></div>';
+        }
+    </script>
+</body>
+</html>
